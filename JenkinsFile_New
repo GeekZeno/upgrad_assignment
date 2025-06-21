@@ -1,6 +1,6 @@
 pipeline {
     agent any
-   
+
     environment {
         AWS_REGION = 'us-east-1'
         ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
@@ -14,13 +14,11 @@ pipeline {
             }
         }
 
-    stages {
         stage('Build and Push on Remote Server') {
             steps {
-                // Use SSH credentials configured in Jenkins
                 sshagent(['jenkins-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no user@remote-server << EOF
+                        ssh -o StrictHostKeyChecking=no user@remote-server << 'EOF'
                         cd /vote
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
                         docker build -t ${IMAGE_NAME} .
