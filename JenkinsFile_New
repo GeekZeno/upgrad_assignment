@@ -16,7 +16,7 @@ pipeline {
 
         stage('Build and Push on Remote Server') {
             steps {
-                sshagent(['jenkins-ssh-key']) {
+                sshagent(['app-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no user@remote-server << 'EOF'
                         cd /vote
