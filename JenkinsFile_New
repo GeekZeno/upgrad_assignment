@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Clone Repo') {
             steps {
-                git credentialsId: 'github-creds', url: 'https://github.com/GeekZeno/upgrad_assignment.git', branch: 'main'
+                git credentialsId: 'github-creds', url: 'https://github.com/GeekZeno/upgrad_assignment.git',  branch: 'main'
             }
         }
 
@@ -18,12 +18,19 @@ pipeline {
             steps {
                 sshagent(['app-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << 'EOF'
-                        cd upgrad_assignment/vote
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
-                        docker build -t ${IMAGE_NAME} .
-                        docker push ${IMAGE_NAME}
-                        EOF
+                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << EOF
+                            # Use double quotes for variable expansion
+                            cd upgrad_assignment/vote || { echo "Failed to enter vote directory"; exit 1; }
+
+                            # Login to ECR (requires AWS CLI installed)
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
+
+                            # Build and push image
+                            docker build -t ${IMAGE_NAME} .
+                            docker push ${IMAGE_NAME}
+
+                            echo "✅ Image built and pushed: ${IMAGE_NAME}"
+EOF
                     """
                 }
             }
