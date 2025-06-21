@@ -6,6 +6,14 @@ pipeline {
         ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
         IMAGE_NAME = "${ECR_URL}/node-app:vote-v${BUILD_NUMBER}"
     }
+
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git credentialsId: 'github-creds', url: 'https://github.com/your-org/your-private-repo.git', branch: 'main'
+            }
+        }
+
     stages {
         stage('Build and Push on Remote Server') {
             steps {
