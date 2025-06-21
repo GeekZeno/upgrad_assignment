@@ -18,7 +18,7 @@ pipeline {
             steps {
                 sshagent(['app-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no user@remote-server << 'EOF'
+                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << 'EOF'
                         cd /vote
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
                         docker build -t ${IMAGE_NAME} .
