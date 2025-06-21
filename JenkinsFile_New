@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Clone Repo') {
             steps {
-                git credentialsId: 'github-creds', url: 'https://github.com/your-org/your-private-repo.git', branch: 'main'
+                git credentialsId: 'github-creds', url: 'https://github.com/GeekZeno/upgrad_assignment.git', branch: 'main'
             }
         }
 
