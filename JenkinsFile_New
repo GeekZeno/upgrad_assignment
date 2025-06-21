@@ -2,17 +2,16 @@ pipeline {
     agent any
 
     environment {
-      AWS_REGION = 'us-east-1'
-      ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
-      IMAGE_TAG = "node-app:vote-v${env.BUILD_NUMBER}"
-      IMAGE_NAME = "${ECR_URL}/${IMAGE_TAG}"
+        AWS_REGION = 'us-east-1'
+        ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
+        IMAGE_TAG = "node-app:vote-v${env.BUILD_NUMBER}"
+        IMAGE_NAME = "${ECR_URL}/${IMAGE_TAG}"
     }
-
 
     stages {
         stage('Clone Repo') {
             steps {
-                git credentialsId: 'github-creds', url: 'https://github.com/GeekZeno/upgrad_assignment.git',  branch: 'main'
+                git credentialsId: 'github-creds', url: 'https://github.com/GeekZeno/upgrad_assignment.git', branch: 'main'
             }
         }
 
@@ -20,15 +19,18 @@ pipeline {
             steps {
                 sshagent(['app-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << EOF
-                            # Use double quotes for variable expansion
-                            cd upgrad_assignment/vote || { echo "Failed to enter vote directory"; exit 1; }
+                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << 'EOF'
+                            set -e
 
-                            # Login to ECR (requires AWS CLI installed)
+                            cd upgrad_assignment/vote || { echo "❌ Failed to enter vote directory"; exit 1; }
+
+                            echo "🔐 Logging into ECR..."
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
 
-                            # Build and push image
+                            echo "🔧 Building Docker image: ${IMAGE_NAME}"
                             docker build -t ${IMAGE_NAME} .
+
+                            echo "📤 Pushing image to ECR..."
                             docker push ${IMAGE_NAME}
 
                             echo "✅ Image built and pushed: ${IMAGE_NAME}"
@@ -42,28 +44,30 @@ EOF
             steps {
                 sshagent(['app-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << EOF
+                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << 'EOF'
+                            set -e
+
                             echo "🎯 Pulling latest image from ECR..."
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
                             docker pull ${IMAGE_NAME}
 
-                            echo "🛑 Checking for running containers..."
-                            CONTAINER_ID=\$(docker ps -f "name=vote-app" --format "{{.ID}}")
+                            echo "🔍 Checking for existing vote-app container..."
+                            EXISTING_CONTAINER=\$(docker ps -a -q --filter "name=vote-app")
 
-                            if [ ! -z "\$CONTAINER_ID" ]; then
-                                echo "⏹️ Stopping old container: \$CONTAINER_ID"
-                                docker stop \$CONTAINER_ID
+                            if [ -n "\$EXISTING_CONTAINER" ]; then
+                                echo "⏹️ Stopping existing container: \$EXISTING_CONTAINER"
+                                docker stop \$EXISTING_CONTAINER || true
 
-                                echo "🗑️ Removing old container"
-                                docker rm \$CONTAINER_ID
+                                echo "🗑️ Removing existing container"
+                                docker rm \$EXISTING_CONTAINER || true
                             else
-                                echo "🟢 No running container found. Proceeding to start new one."
+                                echo "🟢 No existing container found."
                             fi
 
                             echo "🚀 Starting new container..."
                             docker run -d \\
                                 --name vote-app \\
-                                -p 80:80 \\
+                                -p 5000:80 \\
                                 ${IMAGE_NAME}
 
                             echo "✅ Deployment complete!"
