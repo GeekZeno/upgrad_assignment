@@ -4,7 +4,8 @@ pipeline {
     environment {
         AWS_REGION = 'us-east-1'
         ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
-        IMAGE_NAME = "${ECR_URL}/node-app:vote-v${BUILD_NUMBER}"
+        IMAGE_TAG = "node-app:vote-v\${env.BUILD_NUMBER}"
+        IMAGE_NAME = "\${ECR_URL}/\${IMAGE_TAG}"
     }
 
     stages {
@@ -30,6 +31,41 @@ pipeline {
                             docker push ${IMAGE_NAME}
 
                             echo "✅ Image built and pushed: ${IMAGE_NAME}"
+EOF
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to App Host') {
+            steps {
+                sshagent(['app-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@10.100.2.89 << EOF
+                            echo "🎯 Pulling latest image from ECR..."
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
+                            docker pull ${IMAGE_NAME}
+
+                            echo "🛑 Checking for running containers..."
+                            CONTAINER_ID=\$(docker ps -f "name=vote-app" --format "{{.ID}}")
+
+                            if [ ! -z "\$CONTAINER_ID" ]; then
+                                echo "⏹️ Stopping old container: \$CONTAINER_ID"
+                                docker stop \$CONTAINER_ID
+
+                                echo "🗑️ Removing old container"
+                                docker rm \$CONTAINER_ID
+                            else
+                                echo "🟢 No running container found. Proceeding to start new one."
+                            fi
+
+                            echo "🚀 Starting new container..."
+                            docker run -d \\
+                                --name vote-app \\
+                                -p 80:80 \\
+                                ${IMAGE_NAME}
+
+                            echo "✅ Deployment complete!"
 EOF
                     """
                 }
