@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
-        ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
-        IMAGE_TAG = "node-app:vote-v\${env.BUILD_NUMBER}"
-        IMAGE_NAME = "\${ECR_URL}/\${IMAGE_TAG}"
+      AWS_REGION = 'us-east-1'
+      ECR_URL = '932549231491.dkr.ecr.us-east-1.amazonaws.com'
+      IMAGE_TAG = "node-app:vote-v${env.BUILD_NUMBER}"
+      IMAGE_NAME = "${ECR_URL}/${IMAGE_TAG}"
     }
+
 
     stages {
         stage('Clone Repo') {
@@ -62,7 +63,7 @@ EOF
                             echo "🚀 Starting new container..."
                             docker run -d \\
                                 --name vote-app \\
-                                -p 80:80 \\
+                                -p 5000:80 \\
                                 ${IMAGE_NAME}
 
                             echo "✅ Deployment complete!"
